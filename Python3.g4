@@ -160,14 +160,14 @@ comp_op:
 expr: xor_expr ('|' xor_expr)*;
 xor_expr: and_expr ('^' and_expr)*;
 and_expr: algorithm_expr ('&' algorithm_expr)*;
-algorithm_expr: term (('+' | '-') term)*;
-term: factor (('*' | '/' | '%' | '//' ) factor)*;
-factor: ('+' | '-' | '~') factor | power;
+algorithm_expr: term (op=('+' | '-') term)*;
+term: factor (op=('*' | '/' | '%' ) factor)*;
+factor: op=('+' | '-' | '~') factor | power;
 power: atom_expr ('**' factor)?;
 atom_expr: atom trailer*;
 atom:(
-    '(' (testlist_comp)? ')'
-    | '[' (testlist_comp)? ']'
+    op='(' (testlist_comp)? ')'
+    | op='[' (testlist_comp)? ']'
     | NAME
     | NUMBER
     | STRING+
@@ -177,10 +177,11 @@ atom:(
 );
 // testlist_comp: 不考虑复杂运算, 相当于testlist, 递归块
 testlist_comp: testlist;
-trailer: '(' (arglist)? ')' | '[' subscriptlist ']' | '.' NAME;
+trailer: op='(' (arglist)? ')' | op='[' subscriptlist ']' | op='.' NAME;
 subscriptlist: subscript (',' subscript)* (',')?;
-subscript: test | (test)? ':' (test)? (sliceop)?;
+subscript: test | (test)? op=':' (test)? (sliceop)?;
 sliceop: ':' (test)?;
+
 exprlist: (expr) (',' (expr))*;
 testlist: test (',' test)* (',')?;
 
@@ -290,8 +291,10 @@ GT_EQ : '>=';
 LT_EQ : '<=';
 NOT_EQ : '!=';
 ADD : '+';
-MINUS : '-';
+SUB : '-';
 DIV : '/';
+MOD : '%';
+NOT_OP: '~';
 
 SKIP_
  : ( SPACES | COMMENT | LINE_JOINING )+ -> skip

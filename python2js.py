@@ -29,5 +29,5 @@ if __name__ == '__main__':
     listener = JSEmitter()
     walker = ParseTreeWalker()
     walker.walk(listener, tree)
-    # print(listener.getJS(tree))
-
+    with open('result.js', 'w') as fi:
+        fi.write(listener.getJS(tree))
