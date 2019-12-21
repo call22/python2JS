@@ -5,6 +5,7 @@ from antlr4.tree.Tree import TerminalNodeImpl
 class JSEmitter(Python3Listener):
     def __init__(self):
         self.js = {}
+        self.function = {}  # 记录已定义的函数
 
     def getJS(self, ctx):
         return self.js[ctx]
@@ -97,25 +98,37 @@ class JSEmitter(Python3Listener):
         self.setJS(ctx, self.getJS(ctx.getChild(0)))
 
     def exitIf_stmt(self, ctx:Python3Parser.If_stmtContext):
-        content = 'if' + self.getJS(ctx.test(0)) + '{\n' + self.getJS(ctx.suite(0)) + '}\n'
+        indent = ''
+        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
+            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
+
+        content = 'if' + self.getJS(ctx.test(0)) + '{\n' + self.getJS(ctx.suite(0)) + indent +'}\n'
         test_len = len(ctx.test())
         for i in range(1,test_len):
-            content += 'else if' + self.getJS(ctx.test(i)) + '{\n' + self.getJS(ctx.suite(i)) + '}\n'
+            content += indent + 'else if' + self.getJS(ctx.test(i)) + '{\n' + self.getJS(ctx.suite(i)) + indent + '}\n'
         suite_len = len(ctx.suite())
         if suite_len - test_len == 1:   # else
-            content += 'else{\n' + self.getJS(ctx.suite(suite_len-1)) + '}\n'
+            content += indent + 'else{\n' + self.getJS(ctx.suite(suite_len-1)) + indent + '}\n'
         self.setJS(ctx, content)
 
     def exitWhile_stmt(self, ctx:Python3Parser.While_stmtContext):
-        content = 'while' + self.getJS(ctx.test()) + '{\n' + self.getJS(ctx.suite(0)) + '}\n'
+        indent = ''
+        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
+            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
+        content = 'while' + self.getJS(ctx.test()) + '{\n' + self.getJS(ctx.suite(0)) + indent + '}\n'
         if ctx.suite(1) is not None:
-            content += self.getJS(ctx.suite(1)) + '\n'  # else 相当于跳出后第一句
+            content += indent + self.getJS(ctx.suite(1)) + '\n'  # else 相当于跳出后第一句
         self.setJS(ctx, content)
 
 # for (x in range(1,3)):  --->   for ( x=1; x<3; x++){}
 # 对所有range, 进行转变. 不能用js的for in --> 对象的使用方式
 # 仅考虑数字吧
     def exitFor_stmt(self, ctx:Python3Parser.For_stmtContext):
+        # 计算{}需要的缩进
+        indent = ''
+        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
+            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
+
         content = ''
         text = str(self.getJS(ctx.testlist()))
         if text.startswith('range('):    # 调用了range函数
@@ -123,16 +136,24 @@ class JSEmitter(Python3Listener):
             start = result[0].split('(')[1]
             end = result[1].split(')')[0]
             i = self.getJS(ctx.exprlist())
-            content += 'for({} = {}; {} < {}; {}++)'.format(i,start, i, end, i) + '{\n' + self.getJS(ctx.suite(0)) + '}\n'
+            content += 'for({} = {}; {} < {}; {}++)'.format(i,start, i, end, i) + '{\n' + self.getJS(ctx.suite(0)) \
+                       + indent + '}\n'
         else:
             raise KeyError('for error, does not suppose object\n')
         if ctx.suite(1) is not None:
-            content += self.getJS(ctx.suite(1)) + '\n'
+            content += indent + self.getJS(ctx.suite(1)) + '\n'
         self.setJS(ctx, content)
 
     def exitFuncdef(self, ctx:Python3Parser.FuncdefContext):    # 实力不足,忽略->test部分,一般也不用
+        # 计算{}需要的缩进
+        indent = ''
+        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
+            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
+
         content = 'function {} {}{\n'.format(ctx.NAME().getText(), self.getJS(ctx.parameters()))
-        content += self.getJS(ctx.suite()) + '}\n'
+        content += self.getJS(ctx.suite()) + indent + '}\n'
+        # 记录已经
+        self.function[ctx.NAME().getText()] = ctx
         self.setJS(ctx, content)
 
     def exitParameters(self, ctx:Python3Parser.ParametersContext):
@@ -285,6 +306,7 @@ class JSEmitter(Python3Listener):
 
     def exitAtom_expr(self, ctx:Python3Parser.Atom_exprContext):
         text = self.getJS(ctx.atom())
+        # if text == 'len' and
         content = self.getJS(ctx.atom())
         for trailer in ctx.trailer():
             content += self.getJS(trailer)
