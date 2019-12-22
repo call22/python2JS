@@ -137,6 +137,6 @@ if(parse(expr,queue,queueType)):
     if(tmp != None):
         print(tmp)
     else:
-        print('Error in calculate the formula.')
+        print('Error in calculating the formula.')
 else:
-    print('Error in parse the formula.Maybe an empty string or illegal one.')
+    print('Error in parsing the formula.Maybe an empty string or illegal one.')
