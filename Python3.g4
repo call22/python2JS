@@ -100,7 +100,8 @@ eval_input: testlist NEWLINE* EOF;
  */
 stmt: simple_stmt | compound_stmt;
 
-simple_stmt: small_stmt (';' small_stmt)* (';')? NEWLINE;
+// 输入末尾有没有换行均可
+simple_stmt: small_stmt (';' small_stmt)* (';')? NEWLINE?;
 small_stmt: (expr_stmt | pass_stmt | flow_stmt);
 
 expr_stmt: testlist (annassign | augassign testlist | ('=' testlist)*);
@@ -160,14 +161,14 @@ comp_op:
 expr: xor_expr ('|' xor_expr)*;
 xor_expr: and_expr ('^' and_expr)*;
 and_expr: algorithm_expr ('&' algorithm_expr)*;
-algorithm_expr: term (op=('+' | '-') term)*;
-term: factor (op=('*' | '/' | '%' ) factor)*;
-factor: op=('+' | '-' | '~') factor | power;
+algorithm_expr: term (('+' | '-') term)*;
+term: factor (('*' | '/' | '%' ) factor)*;
+factor: ('+' | '-' | '~') factor | power;
 power: atom_expr ('**' factor)?;
 atom_expr: atom trailer*;
 atom:(
-    op='(' (testlist_comp)? ')'
-    | op='[' (testlist_comp)? ']'
+    '(' (testlist_comp)? ')'
+    | '[' (testlist_comp)? ']'
     | NAME
     | NUMBER
     | STRING+
@@ -286,6 +287,9 @@ COLON : ':';
 ASSIGN : '=';
 OPEN_BRACK : '[';
 CLOSE_BRACK : ']';
+OR_OP: '|';
+XOR: '^';
+AND_OP: '&';
 LESS_THAN : '<';
 GREATER_THAN : '>';
 EQUALS : '==';
@@ -297,6 +301,7 @@ SUB : '-';
 DIV : '/';
 MOD : '%';
 NOT_OP: '~';
+POWER: '**';
 
 SKIP_
  : ( SPACES | COMMENT | LINE_JOINING )+ -> skip

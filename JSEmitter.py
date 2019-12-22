@@ -3,7 +3,6 @@ from Python3Parser import Python3Parser
 from antlr4.tree.Tree import TerminalNodeImpl
 
 
-# 一个
 class Table:
     def __init__(self):
         self.functree = {}
@@ -51,12 +50,11 @@ class JSEmitter(Python3Listener):
 
     def exitSingle_input(self, ctx: Python3Parser.Single_inputContext):
         content = ''
-        if ctx.simple_stmt() is not None:
-            content += self.getJS(ctx.simple_stmt())
-        elif ctx.compound_stmt() is not None:
-            content += self.getJS(ctx.compound_stmt()) + ctx.NEWLINE().getText()
-        else:
-            content += ctx.NEWLINE().getText()
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitFile_input(self, ctx: Python3Parser.File_inputContext):
@@ -91,21 +89,21 @@ class JSEmitter(Python3Listener):
         self.setJS(ctx, self.getJS(ctx.getChild(0)))
 
     def exitExpr_stmt(self, ctx: Python3Parser.Expr_stmtContext):
-        content = self.getJS(ctx.getChild(0))
-        if ctx.annassign() is not None:
-            content += self.getJS(ctx.annassign())
-        elif ctx.augassign() is not None:
-            content += self.getJS(ctx.augassign())
-            content += self.getJS(ctx.testlist(1))
-        else:
-            for item in ctx.testlist()[1:]:
-                content += ' = ' + self.getJS(item)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitAnnassign(self, ctx: Python3Parser.AnnassignContext):
-        content = ' : ' + self.getJS(ctx.test(0))
-        if ctx.test(1) is not None:
-            content += ' = ' + self.getJS(ctx.test(1))
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitAugassign(self, ctx: Python3Parser.AugassignContext):
@@ -124,9 +122,12 @@ class JSEmitter(Python3Listener):
         self.setJS(ctx, ctx.getText())
 
     def exitReturn_stmt(self, ctx: Python3Parser.Return_stmtContext):
-        content = 'return '
-        if ctx.testlist() is not None:
-            content += self.getJS(ctx.testlist())
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText() + ' '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitCompound_stmt(self, ctx: Python3Parser.Compound_stmtContext):
@@ -137,20 +138,27 @@ class JSEmitter(Python3Listener):
         if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
             indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
 
-        content = 'if' + self.getJS(ctx.test(0)) + '{\n' + self.getJS(ctx.suite(0)) + indent + '}\n'
-        test_len = len(ctx.test())
-        for i in range(1, test_len):
-            content += indent + 'else if' + self.getJS(ctx.test(i)) + '{\n' + self.getJS(ctx.suite(i)) + indent + '}\n'
-        suite_len = len(ctx.suite())
-        if suite_len - test_len == 1:  # else
-            content += indent + 'else{\n' + self.getJS(ctx.suite(suite_len - 1)) + indent + '}\n'
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, Python3Parser.TestContext):
+                content += self.getJS(child)
+            elif isinstance(child, Python3Parser.SuiteContext):
+                content += self.getJS(child) + indent + '}\n'
+            elif isinstance(child, TerminalNodeImpl):
+                if (child.getSymbol().type == Python3Parser.COLON):
+                    content += '{'
+                elif (child.getSymbol().type == Python3Parser.ELIF):
+                    content += indent + 'else if'
+                else:
+                    content += indent + child.getText()
         self.setJS(ctx, content)
 
     def exitWhile_stmt(self, ctx: Python3Parser.While_stmtContext):
         indent = ''
         if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
             indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
-        content = 'while' + self.getJS(ctx.test()) + '{\n' + self.getJS(ctx.suite(0)) + indent + '}\n'
+
+        content = ctx.getChild(0).getText() + self.getJS(ctx.test()) + '{\n' + self.getJS(ctx.suite(0)) + indent + '}\n'
         if ctx.suite(1) is not None:
             content += indent + self.getJS(ctx.suite(1)) + '\n'  # else 相当于跳出后第一句
         self.setJS(ctx, content)
@@ -171,10 +179,12 @@ class JSEmitter(Python3Listener):
             start = result[0].split('(')[1]
             end = result[1].split(')')[0]
             i = self.getJS(ctx.exprlist())
-            content += 'for({} = {}; {} < {}; {}++)'.format(i, start, i, end, i) + '{\n' + self.getJS(ctx.suite(0)) \
-                       + indent + '}\n'
+            content += 'for({} = {}; {} < {}; {}++)'.format(i, start, i, end, i)
+            content += '{\n' + self.getJS(ctx.suite(0)) + indent + '}\n'
         else:
-            raise KeyError('for error, does not suppose object\n')
+            e = 'For error, does not suppose object'
+            self.errorLog.append(e)
+            #raise KeyError('for error, does not suppose object\n')
         if ctx.suite(1) is not None:
             content += indent + self.getJS(ctx.suite(1)) + '\n'
         self.setJS(ctx, content)
@@ -185,10 +195,8 @@ class JSEmitter(Python3Listener):
         if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
             indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
 
-        content = 'function {} {}{\n'.format(ctx.NAME().getText(), self.getJS(ctx.parameters()))
-        content += self.getJS(ctx.suite()) + indent + '}\n'
-        # 记录已经
-        self.function[ctx.NAME().getText()] = ctx
+        content = 'function {} {}'.format(ctx.NAME().getText(), self.getJS(ctx.parameters()))
+        content += '{\n' + self.getJS(ctx.suite()) + indent + '}\n'
         self.setJS(ctx, content)
 
         # calculate parameters number
@@ -209,28 +217,21 @@ class JSEmitter(Python3Listener):
     # 对参数为*,**的暂时无法解决
     def exitArgslist(self, ctx: Python3Parser.ArgslistContext):
         content = ''
-        if ctx.argslist_normal() is not None:
+        if ctx.getChildCount() == 1 and ctx.argslist_normal() is not None:
             content += self.getJS(ctx.argslist_normal())
         else:
-            raise KeyError('parameters does not suppose *,** type')
+            e = 'Parameters does not suppose *,** type'
+            self.errorLog.append(e)
+            # raise KeyError('parameters does not suppose *,** type')
         self.setJS(ctx, content)
 
     def exitArgslist_normal(self, ctx: Python3Parser.Argslist_normalContext):
-        print('#############')
-        pdef_idx = 1
-        test_idx = 0
-        content = self.getJS(ctx.getChild(0))
-        if ctx.getChild(1) == ctx.test(0):
-            content += '=' + self.getJS(ctx.test(0))
-            test_idx = 1
-        for child in ctx.children[pdef_idx + test_idx:]:
-            if child == ctx.pdef(pdef_idx):
-                pdef_idx += 1
-                content += ', ' + self.getJS(child)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
             else:
-                print(child)
-                test_idx += 1
-                content += '=' + self.getJS(child)
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     # js函数不会对参数值进行任何检查, 故不能指定类型
@@ -245,33 +246,46 @@ class JSEmitter(Python3Listener):
         else:
             indent = ctx.INDENT().getText()
             dedent = ctx.DEDENT().getText()
-            for stmt in ctx.stmt():
-                content += indent + self.getJS(stmt)
+            for child in ctx.children:
+                if isinstance(child, TerminalNodeImpl):
+                    if child.getSymbol().type == Python3Parser.NEWLINE:
+                        content += child.getText()
+                else:
+                    content += indent + self.getJS(child)
             content += dedent
         self.setJS(ctx, content)
 
     # 暂时没有弄懂 if else的作用
     def exitTest(self, ctx: Python3Parser.TestContext):
-        content = self.getJS(ctx.or_test(0))
-        if ctx.test() is not None:
-            content += 'if ' + self.getJS(ctx.or_test(1)) + ' else ' + self.getJS(ctx.test())
-        self.setJS(ctx, content)
+        if ctx.getChildCount() == 1:
+            self.setJS(ctx, self.getJS(ctx.getChild(0)))
+        else:
+            content = self.getJS(ctx.getChild(2)) + ' ? ({}) : {}'.format(self.getJS(ctx.getChild(0)), self.getJS(ctx.test()))
+            self.setJS(ctx, content)
 
     def exitOr_test(self, ctx: Python3Parser.Or_testContext):
-        content = self.getJS(ctx.and_test(0))
-        for item in ctx.and_test()[1:]:
-            content += ' || ' + self.getJS(item)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.OR:
+                    content += ' || '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitAnd_test(self, ctx: Python3Parser.And_testContext):
-        content = self.getJS(ctx.not_test(0))
-        for item in ctx.not_test()[1:]:
-            content += ' && ' + self.getJS(item)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.AND:
+                    content += ' && '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitNot_test(self, ctx: Python3Parser.Not_testContext):
         content = ''
-        if ctx.not_test() is not None:
+        if isinstance(ctx.getChild(0), TerminalNodeImpl):
             content += '!' + self.getJS(ctx.not_test())
         else:
             content += self.getJS(ctx.comparison())
@@ -287,7 +301,9 @@ class JSEmitter(Python3Listener):
     def exitComp_op(self, ctx: Python3Parser.Comp_opContext):
         text = ctx.getText()
         if text in ['not in', 'is', 'is not']:
-            raise KeyError('comparision error, does not suppose "not in" "is" "is not"')
+            e = 'comparision error, does not suppose "not in" "is" "is not"'
+            self.errorLog.append(e)
+            #raise KeyError('comparision error, does not suppose "not in" "is" "is not"')
         elif text == '==':
             self.setJS(ctx, '===')
         elif text == '!=':
@@ -296,64 +312,84 @@ class JSEmitter(Python3Listener):
             self.setJS(ctx, ' {} '.format(text))
 
     def exitExpr(self, ctx: Python3Parser.ExprContext):
-        content = self.getJS(ctx.xor_expr(0))
-        for child in ctx.xor_expr()[1:]:
-            content += ' | ' + self.getJS(child)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.OR_OP:
+                    content += ' | '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitXor_expr(self, ctx: Python3Parser.Xor_exprContext):
-        content = self.getJS(ctx.and_expr(0))
-        for child in ctx.and_expr()[1:]:
-            content += ' ^ ' + self.getJS(child)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.XOR:
+                    content += ' ^ '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitAnd_expr(self, ctx: Python3Parser.And_exprContext):
-        content = self.getJS(ctx.algorithm_expr(0))
-        for child in ctx.algorithm_expr()[1:]:
-            content += ' & ' + self.getJS(child)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.AND_OP:
+                    content += ' & '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     # 在algorithm之后的尚未完成,整个程序暂时不要运行(因为自顶向下写的)
     def exitAlgorithm_expr(self, ctx: Python3Parser.Algorithm_exprContext):
-        content = self.getJS(ctx.term(0))
-        # op_idx = 0
-        for term in ctx.term()[1:]:
-            if ctx.op.type == Python3Parser.ADD:
-                content += ' + ' + self.getJS(term)
-            elif ctx.op.type == Python3Parser.SUB:
-                content += ' - ' + self.getJS(term)
-            # op_idx += 1
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.ADD:
+                    content += ' + '
+                elif child.getSymbol().type == Python3Parser.SUB:
+                    content += ' - '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitTerm(self, ctx: Python3Parser.TermContext):
-        content = self.getJS(ctx.factor(0))
-        # op_idx = 0
-        for factor in ctx.factor()[1:]:
-            if ctx.op.type == Python3Parser.STAR:
-                content += ' * ' + self.getJS(factor)
-            elif ctx.op.type == Python3Parser.DIV:
-                content += ' / ' + self.getJS(factor)
-            elif ctx.op.type == Python3Parser.MOD:
-                content += ' % ' + self.getJS(factor)
-            # op_idx += 1
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.STAR:
+                    content += ' * '
+                elif child.getSymbol().type == Python3Parser.DIV:
+                    content += ' / '
+                elif child.getSymbol().type == Python3Parser.MOD:
+                    content += ' % '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitFactor(self, ctx: Python3Parser.FactorContext):
         content = ''
-        if ctx.op is None:
-            content += self.getJS(ctx.power())
-        elif ctx.op.type == Python3Parser.ADD:
-            content += ' + ' + self.getJS(ctx.factor())
-        elif ctx.op.type == Python3Parser.SUB:
-            content += ' - ' + self.getJS(ctx.factor())
-        elif ctx.op.type == Python3Parser.NOT_OP:
-            content += '~' + self.getJS(ctx.factor())
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.ADD:
+                    content += ' + '
+                elif child.getSymbol().type == Python3Parser.SUB:
+                    content += ' - '
+                elif child.getSymbol().type == Python3Parser.NOT_OP:
+                    content += ' ~ '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitPower(self, ctx: Python3Parser.PowerContext):
-        content = self.getJS(ctx.atom_expr())
-        if ctx.factor() is not None:
-            content += '**' + self.getJS(ctx.factor())
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.POWER:
+                    content += ' ** '
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitAtom_expr(self, ctx: Python3Parser.Atom_exprContext):
@@ -368,30 +404,18 @@ class JSEmitter(Python3Listener):
 
     def exitAtom(self, ctx: Python3Parser.AtomContext):
         content = ''
-        if ctx.op is not None:
-            if ctx.op.type == Python3Parser.OPEN_PAREN:
-                content += '({})'.format(self.getJS(ctx.testlist_comp()) \
-                                             if ctx.testlist_comp() is not None else '')
-            elif ctx.op.type == Python3Parser.OPEN_BRACK:
-                if ctx.testlist_comp() is not None:
-                    content += '[{}]'.format(self.getJS(ctx.testlist_comp()))
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.NONE:
+                    content += 'undefined'
+                elif child.getSymbol().type == Python3Parser.TRUE:
+                    content += 'true'
+                elif child.getSymbol().type == Python3Parser.FALSE:
+                    content += 'false'
                 else:
-                    content += 'new Array()'
-        elif ctx.NAME() is not None:
-            content += ctx.NAME().getText()
-        elif ctx.NUMBER() is not None:
-            content += ctx.NUMBER().getText()
-        elif ctx.STRING(0) is not None:
-            for s in ctx.STRING():
-                content += s.getText()
-        else:
-            text = ctx.getText()
-            if text == 'None':
-                content += 'undefined'
-            elif text == 'True':
-                content += 'true'
-            elif text == 'False':
-                content += 'false'
+                    content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitTestlist_comp(self, ctx: Python3Parser.Testlist_compContext):
@@ -401,6 +425,7 @@ class JSEmitter(Python3Listener):
         content = ''
         if ctx.op is not None and ctx.op.type == Python3Parser.OPEN_BRACK:
             content += '[{}]'.format(self.getJS(ctx.subscriptlist()))
+        # 对调用函数的参数进行处理, 不支持类属性获取, example: a.type
         else:
             if ctx.op is None:
                 func_name = self.getJS(ctx.parentCtx.atom())
@@ -435,9 +460,12 @@ class JSEmitter(Python3Listener):
         self.setJS(ctx, content)
 
     def exitSubscriptlist(self, ctx: Python3Parser.SubscriptlistContext):
-        content = self.getJS(ctx.subscript(0))
-        for sub in ctx.subscript()[1:]:
-            content += ', ' + self.getJS(sub)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     # 因为js不支持切片,故暂时不实现
@@ -445,34 +473,48 @@ class JSEmitter(Python3Listener):
         if ctx.op is None:
             self.setJS(ctx, self.getJS(ctx.getChild(0)))
         else:
-            raise KeyError('subsript error, does not suppose [:]')
+            e = 'Subsript error, does not suppose [:]'
+            self.errorLog.append(e)
+            #raise KeyError('subsript error, does not suppose [:]')
 
     def exitExprlist(self, ctx: Python3Parser.ExprlistContext):
-        content = self.getJS(ctx.expr(0))
-        for expr in ctx.expr()[1:]:
-            content += ',' + self.getJS(expr)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitTestlist(self, ctx: Python3Parser.TestlistContext):
-        content = self.getJS(ctx.getChild(0))
-        for test in ctx.test()[1:]:
-            content += ',' + self.getJS(test)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     def exitArglist(self, ctx: Python3Parser.ArglistContext):
-        content = self.getJS(ctx.getChild(0))
-        for argument in ctx.argument()[1:]:
-            content += ',' + self.getJS(argument)
+        content = ''
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)
 
     # 同样不考虑*, 和**情况
     def exitArgument(self, ctx: Python3Parser.ArgumentContext):
         content = ''
-        length = len(ctx.test())
-        if length == 2:
-            content = self.getJS(ctx.test(0)) + '=' + self.getJS(ctx.test(1))
-        elif length == 1:
-            content = self.getJS(ctx.test(0))
-        else:
-            raise KeyError('argument error, does not suppose ** or *')
+        for child in ctx.children:
+            if isinstance(child, TerminalNodeImpl):
+                if child.getSymbol().type == Python3Parser.STAR or child.getSymbol().type == Python3Parser.POWER:
+                    e = 'Argument error, does not suppose ** or *'
+                    self.errorLog.append(e)
+                    # raise KeyError('argument error, does not suppose ** or *')
+                else:
+                    content += child.getText()
+            else:
+                content += self.getJS(child)
         self.setJS(ctx, content)

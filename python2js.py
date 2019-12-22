@@ -17,16 +17,12 @@ if __name__ == '__main__':
     else:
         input_stream = InputStream(sys.stdin.read())
 
-    # with open('input.txt', 'w') as fi:
-    #     fi.write(str(input_stream))
     lexer = Python3Lexer(input_stream)
     token_stream = CommonTokenStream(lexer)
     parser = Python3Parser(token_stream)
     tree = parser.parse()
 
     lisp_tree_str = tree.toStringTree(recog=parser)
-    with open('lexer.txt', 'w') as fi:
-        fi.write(lisp_tree_str)
 
     # listener
     print("Start Walking...")
