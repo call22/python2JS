@@ -1,5 +1,7 @@
 def parse(expr,queue,queueType):
     e_len = len(expr)
+    if(e_len == 0):
+        return False
     x = 0
     num_flag = 0
     last = ''
@@ -136,4 +138,4 @@ if(parse(expr,queue,queueType)):
     else:
         print('Error in calculate the formula.')
 else:
-    print('Error in parse the formula.')
+    print('Error in parse the formula.Maybe an empty string or illegal one.')
