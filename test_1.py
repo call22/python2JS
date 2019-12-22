@@ -56,14 +56,15 @@ def parse(expr,queue,queueType):
     return True
 
 def priority(x):
-    if(x == '('):
-        return 0
-    elif(x == '+' or x == '-'):
-        return 1
-    elif(x == '*' or x == '/'):
-        return 2
-    else:
-        return None
+    # if(x == '('):
+    #     return 0
+    # elif(x == '+' or x == '-'):
+    #     return 1
+    # elif(x == '*' or x == '/'):
+    #     return 2
+    # else:
+    #     return None
+    return (0 if(x == '(') else (1 if( x == '+' or x == '-') else (2 if(x == '*' or x == '/') else None)))
 
 def calculate(queue,queueType):
     q_len = len(queue)
