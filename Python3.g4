@@ -138,7 +138,7 @@ pdef: NAME (':' test)?;
 /*
  * suite: 子代码块, 组成statement
  */
-suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT;
+suite: simple_stmt | NEWLINE INDENT (NEWLINE | stmt)* DEDENT;
 
 /*
  * testlist: statement chunck? 集合运算逻辑的块儿
@@ -177,7 +177,9 @@ atom:(
 );
 // testlist_comp: 不考虑复杂运算, 相当于testlist, 递归块
 testlist_comp: testlist;
-trailer: op='(' (arglist)? ')' | op='[' subscriptlist ']' | op='.' NAME;
+trailer: expr_param | op='[' subscriptlist ']' | op='.' NAME expr_param;
+expr_param: '(' (arglist)? ')';
+
 subscriptlist: subscript (',' subscript)* (',')?;
 subscript: test | (test)? op=':' (test)? (sliceop)?;
 sliceop: ':' (test)?;
@@ -219,7 +221,7 @@ BREAK : 'break';
 
 NEWLINE
  :  ( {self.atStartOfInput()}? SPACES
-    | ( '\r'? '\n' | '\r' | '\f' ) SPACES?)
+    | ( '\r\n' | '\n' | '\r' | '\f' ) SPACES?)
     {
         newLine = self.text
         for i in newLine :
