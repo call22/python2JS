@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 palindrome.py(test_1.py)若输入为空以"(空串)"标识
 input0
 aaa
@@ -92,3 +93,6 @@ input5
 output5
 Illegal input!
 Error in parsing the formula.Maybe an empty string or illegal one.
+=======
+
+>>>>>>> ed27b691c7c0e51db407e911733d0f3f9b496bd0
