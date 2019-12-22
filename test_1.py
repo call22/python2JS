@@ -1,5 +1,7 @@
 def parse(expr,queue,queueType):
     e_len = len(expr)
+    if(e_len == 0):
+        return False
     x = 0
     num_flag = 0
     last = ''
@@ -54,14 +56,15 @@ def parse(expr,queue,queueType):
     return True
 
 def priority(x):
-    if(x == '('):
-        return 0
-    elif(x == '+' or x == '-'):
-        return 1
-    elif(x == '*' or x == '/'):
-        return 2
-    else:
-        return None
+    # if(x == '('):
+    #     return 0
+    # elif(x == '+' or x == '-'):
+    #     return 1
+    # elif(x == '*' or x == '/'):
+    #     return 2
+    # else:
+    #     return None
+    return (0 if(x == '(') else (1 if( x == '+' or x == '-') else (2 if(x == '*' or x == '/') else None)))
 
 def calculate(queue,queueType):
     q_len = len(queue)
@@ -134,6 +137,6 @@ if(parse(expr,queue,queueType)):
     if(tmp != None):
         print(tmp)
     else:
-        print('Error in calculate the formula.')
+        print('Error in calculating the formula.')
 else:
-    print('Error in parse the formula.')
+    print('Error in parsing the formula.Maybe an empty string or illegal one.')
