@@ -30,7 +30,7 @@ else:
             j = next[j]
         j = j + 1
         if (j == p_len - 1):
-            ans.append(i)
+            ans.append(i-j+1)
             j = next[j]
     a_len = len(ans)
     if (a_len == 0):
