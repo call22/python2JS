@@ -1,5 +1,5 @@
-from Python3Listener import Python3Listener
-from Python3Parser import Python3Parser
+from dependence.Python3Listener import Python3Listener
+from dependence.Python3Parser import Python3Parser
 from antlr4.tree.Tree import TerminalNodeImpl
 
 

@@ -5,15 +5,17 @@ import os
 from antlr4 import *
 from antlr4.InputStream import InputStream
 
-from Python3Lexer import Python3Lexer
-from Python3Parser import Python3Parser
+from dependence.Python3Lexer import Python3Lexer
+from dependence.Python3Parser import Python3Parser
 from JSEmitter import JSEmitter
 from filter import spaceFilter
 
 
 if __name__ == '__main__':
+    file_name = 'result'
     if len(sys.argv) > 1:
         input_stream = FileStream(sys.argv[1],encoding='utf-8')
+        file_name = sys.argv[1].split('.')[0]
     else:
         input_stream = InputStream(sys.stdin.read())
 
@@ -37,5 +39,5 @@ if __name__ == '__main__':
     else:
         with open('tmp.js', 'w') as fi:
             fi.write(listener.getJS(tree))
-        spaceFilter('tmp.js', 'result.js')
+        spaceFilter('tmp.js', file_name+'.js')
         os.remove('tmp.js')
