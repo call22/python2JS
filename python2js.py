@@ -5,8 +5,8 @@ import os
 from antlr4 import *
 from antlr4.InputStream import InputStream
 
-from dependence.Python3Lexer import Python3Lexer
-from dependence.Python3Parser import Python3Parser
+from Python3Lexer import Python3Lexer
+from Python3Parser import Python3Parser
 from JSEmitter import JSEmitter
 from filter import spaceFilter
 
