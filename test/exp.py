@@ -64,6 +64,7 @@ def priority(x):
     #     return 2
     # else:
     #     return None
+
     return (0 if(x == '(') else (1 if( x == '+' or x == '-') else (2 if(x == '*' or x == '/') else None)))
 
 def calculate(queue,queueType):
@@ -71,6 +72,7 @@ def calculate(queue,queueType):
     opStack = []
     proStack = []
     proTopNum = 0
+
     for i in range(0,q_len):
         if(queueType[i] == 'n'):
             proStack.append(queue[i])
@@ -87,6 +89,7 @@ def calculate(queue,queueType):
             while(len(opStack) != 0 and priority(opStack[len(opStack)-1]) >= priority(queue[i])):
                 proStack.append(opStack.pop())
             opStack.append(queue[i])
+
     while(len(opStack) != 0):
          y = opStack.pop()
          if(y != '+' and y != '-' and y != '*' and y != '/'):
@@ -94,6 +97,7 @@ def calculate(queue,queueType):
          proStack.append(y)
     pro_len = len(proStack)
     calStack = []
+
     for i in range(0,pro_len):
         if(proStack[i] == '+'):
             if(len(calStack) < 2):

@@ -13,11 +13,19 @@ from filter import spaceFilter
 
 if __name__ == '__main__':
     file_name = 'result'
+    lexer_name = 'lexer.py'
+    # 由于词法分析对空行处理有bug, 故先预处理, 将空行消除
     if len(sys.argv) > 1:
-        input_stream = FileStream(sys.argv[1],encoding='utf-8')
         file_name = sys.argv[1].split('.')[0]
+        spaceFilter(sys.argv[1], lexer_name)
     else:
-        input_stream = InputStream(sys.stdin.read())
+        with open('lexer_tmp.py', 'w') as fi:
+            fi.write(sys.stdin.read())
+        spaceFilter('lexer_tmp.py', lexer_name)
+        os.remove('lexer_tmp.py')
+
+    input_stream = FileStream(lexer_name, encoding='utf-8')
+    os.remove(lexer_name)
 
     lexer = Python3Lexer(input_stream)
     token_stream = CommonTokenStream(lexer)
