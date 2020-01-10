@@ -1,34 +1,12 @@
 from Python3Listener import Python3Listener
 from Python3Parser import Python3Parser
 from antlr4.tree.Tree import TerminalNodeImpl
+from table import FuncTable, VarTable
 
-
-class Table:
-    def __init__(self):
-        self.functree = {}
-
-    def initTree(self):
-        self.functree["print"] = {"type": "console.log", "param": (1, 1)}
-        self.functree["input"] = {"type": "prompt", "param": (0, 0)}
-        self.functree["int"] = {"type": "parseInt", "param": (1, 1)}
-        self.functree["len"] = {"type": "alien", "param": (1, 1)}
-        self.functree["append"] = {"type": "push", "param": (1, 1)}
-        self.functree["pop"] = {"type": "default", "param": (0, 0)}
-        self.functree["range"] = {"type": "default", "param": (2,2)}
-
-    def add(self, name, type, param):
-        self.functree[name] = {"type": type, "param": param}
-
-    def find(self, name):
-        if self.functree.get(name):
-            return self.functree.get(name)
-        else:
-            return False
-
-
-Func = Table()
+Func = FuncTable()
 Func.initTree()
 
+Var = VarTable()
 
 class JSEmitter(Python3Listener):
     def __init__(self):
