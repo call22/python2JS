@@ -8,10 +8,26 @@ class funcNode:
         self.name = name
         self.type = type
         self.param = param
-        self.subFuncDict = None
+        self.subFuncDict = {}
+        self.localVar = {}
 
-# |func| type| param| subfunction[]
-#
+
+class localvarNode:
+    def __init__(self, name, type):
+        self.var_name = name
+        self.var_type = type
+
+
+# |name | type| param| subfunction[]
+#--------------------------------------------
+# for function, we judge them with limits:
+#   1.function name     2. param number     3. scope
+#----------------------------------------------
+# for variable, we judge them with limits:
+#   1. variable name    2. scope
+#   judge variable's type is also essential,
+#   but now I can't find appropriate method to get it's type.
+
 class FuncTable:
 
     def __init__(self):
@@ -45,22 +61,23 @@ class FuncTable:
             func = func[i].subFuncDict
             if func.get(name) is not None:
                 return func.get(name)
-
         return False
 
+    def add_var(self, var_name: str, var_type: str, proc: list):
+        pre = self.functree
+        func = pre.subFuncDict
+        for i in proc:
+            pre = func[i]
+            func = pre.subFuncDict
+        pre.localVar[var_name] = localvarNode(var_name, var_type)
 
-class VarTable:
+    def find_var(self, var_name: str, var_type: str, proc: list):
+        func = self.functree
+        if func.localVar.get(var_name) is not None:
+            return True
 
-    def __init__(self):
-        self.varlist = {}
-
-    def add(self, name:str, type, funcRange):
-        if self.varlist.get(name) is None:
-            self.varlist[name] = [(type, funcRange)]
-        else:
-            self.varlist.get(name).append((type, funcRange))
-
-    def find(self, name, type, funcRange):
-        if self.varlist.get(name) is not None:
-            pass
-
+        for i in proc:
+            func = func.subFuncDict[i]
+            if func.localVar.get(var_name) is not None:
+                return True
+        return False

@@ -1,18 +1,23 @@
 from Python3Listener import Python3Listener
 from Python3Parser import Python3Parser
 from antlr4.tree.Tree import TerminalNodeImpl
-from table import FuncTable, VarTable
+from table import FuncTable
 
 Func = FuncTable()
 Func.initTree()
 
-Var = VarTable()
+# 声明变量的方式:
+# 1. 表达式 a = 1,
+# 2. for i in range(1)形式
+
 
 class JSEmitter(Python3Listener):
     def __init__(self):
         self.js = {}
         self.procHead = []
         self.errorLog = []
+        self.assign = False # expr flag
+        self.for_var = False   # for flag, signal
 
     def clearAll(self):
         self.js = {}
@@ -27,6 +32,7 @@ class JSEmitter(Python3Listener):
 
     def exitParse(self, ctx: Python3Parser.ParseContext):
         self.setJS(ctx, self.getJS(ctx.getChild(0)))
+
 
     def exitSingle_input(self, ctx: Python3Parser.Single_inputContext):
         content = ''
@@ -67,6 +73,13 @@ class JSEmitter(Python3Listener):
 
     def exitSmall_stmt(self, ctx: Python3Parser.Small_stmtContext):
         self.setJS(ctx, self.getJS(ctx.getChild(0)))
+
+    # 变量声明
+    def enterExpr_stmt(self, ctx:Python3Parser.Expr_stmtContext):
+        if ctx.getChildCount() > 1 and isinstance(ctx.getChild(1), TerminalNodeImpl):
+            if ctx.getChild(1).getSymbol().type == Python3Parser.ASSIGN:
+                # 赋值语句, 有可能为变量定义.
+                self.assign = True
 
     def exitExpr_stmt(self, ctx: Python3Parser.Expr_stmtContext):
         content = ''
@@ -142,6 +155,10 @@ class JSEmitter(Python3Listener):
         if ctx.suite(1) is not None:
             content += indent + self.getJS(ctx.suite(1)) + '\n'  # else 相当于跳出后第一句
         self.setJS(ctx, content)
+
+    # 变量声明
+    def enterFor_stmt(self, ctx:Python3Parser.For_stmtContext):
+        self.for_var = True
 
     # for (x in range(1,3)):  --->   for ( x=1; x<3; x++){}
     # 对所有range, 进行转变. 不能用js的for in --> 对象的使用方式
@@ -384,6 +401,21 @@ class JSEmitter(Python3Listener):
         for trailer in ctx.trailer():
             content += self.getJS(trailer)
         self.setJS(ctx, content)
+
+    def enterAtom(self, ctx:Python3Parser.AtomContext):
+        # judge name var, add local var and check var's legal
+        name_child = ctx.getChild(0)
+        if isinstance(name_child, TerminalNodeImpl) and\
+                name_child.getSymbol().type == Python3Parser.NAME and\
+                ctx.parentCtx.getChildCount() == 1: # 确认为变量名而非函数名
+            # 变量声明
+            if self.assign or self.for_var:
+                Func.add_var(name_child.getText(), '', self.procHead)
+                self.assign = False
+                self.for_var = False
+            elif not Func.find_var(name_child.getText(), '', self.procHead):
+                e = "variable %s is not defined in code" % name_child.getText()
+                self.errorLog.append(e)
 
     def exitAtom(self, ctx: Python3Parser.AtomContext):
         content = ''
