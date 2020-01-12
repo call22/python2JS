@@ -17,6 +17,7 @@ class JSEmitter(Python3Listener):
     def clearAll(self):
         self.js = {}
         self.errorLog = []
+        self.procHead = []
 
     def getJS(self, ctx):
         return self.js[ctx]
@@ -420,18 +421,18 @@ class JSEmitter(Python3Listener):
                 param_num = len(ctx.expr_param().arglist().argument())
             func_info = Func.find(func_name, self.procHead)
             if func_info:
-                func_param = func_info["param"]
+                func_param = func_info.param
                 if param_num < func_param[0] or param_num > func_param[1]:
                     e = 'Parameters Error: too many or few parameters in ' % func_name
                     self.errorLog.append(e)
                 else:
-                    if func_info["type"] == "default":
+                    if func_info.type == "default":
                          content += func_name + self.getJS(ctx.expr_param())
-                    elif func_info["type"] == "alien":
+                    elif func_info.type == "alien":
                         # 暂时只考虑类似len()函数
                         content += self.getJS(ctx.expr_param())[1:-1] + '.' + 'length'
                     else:
-                        content += func_info["type"] + self.getJS(ctx.expr_param())
+                        content += func_info.type + self.getJS(ctx.expr_param())
             else:
                 e = 'Function Error: cannot find %s in code' % func_name
                 self.errorLog.append(e)

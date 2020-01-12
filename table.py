@@ -38,10 +38,14 @@ class FuncTable:
 
     def find(self, name, proc: list):
         func = self.functree.subFuncDict
+        if func.get(name) is not None:
+            return func.get(name)
+
         for i in proc:
-            if func.get(name) is not None:
-                return True
             func = func[i].subFuncDict
+            if func.get(name) is not None:
+                return func.get(name)
+
         return False
 
 
