@@ -11,6 +11,7 @@ Var = VarTable()
 class JSEmitter(Python3Listener):
     def __init__(self):
         self.js = {}
+        self.procHead = []
         self.errorLog = []
 
     def clearAll(self):
@@ -167,16 +168,7 @@ class JSEmitter(Python3Listener):
             content += indent + self.getJS(ctx.suite(1)) + '\n'
         self.setJS(ctx, content)
 
-    def exitFuncdef(self, ctx: Python3Parser.FuncdefContext):  # 实力不足,忽略->test部分,一般也不用
-        # 计算{}需要的缩进
-        indent = ''
-        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
-            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
-
-        content = 'function {} {}'.format(ctx.NAME().getText(), self.getJS(ctx.parameters()))
-        content += '{\n' + self.getJS(ctx.suite()) + indent + '}\n'
-        self.setJS(ctx, content)
-
+    def enterFuncdef(self, ctx:Python3Parser.FuncdefContext):
         # calculate parameters number
         min_param = 0
         max_param = 0
@@ -186,7 +178,19 @@ class JSEmitter(Python3Listener):
             max_param = len(normal.pdef())
             min_param = max_param - len(normal.test())
         # add fucntion
-        Func.add(ctx.NAME().getText(), "default", (min_param, max_param))
+        Func.add(ctx.NAME().getText(), "default", (min_param, max_param), self.procHead)
+        self.procHead.append(ctx.NAME().getText())
+
+    def exitFuncdef(self, ctx: Python3Parser.FuncdefContext):  # 实力不足,忽略->test部分,一般也不用
+        # 计算{}需要的缩进
+        indent = ''
+        if isinstance(ctx.parentCtx.parentCtx.parentCtx, Python3Parser.SuiteContext):
+            indent = ctx.parentCtx.parentCtx.parentCtx.INDENT().getText()
+
+        content = 'function {} {}'.format(ctx.NAME().getText(), self.getJS(ctx.parameters()))
+        content += '{\n' + self.getJS(ctx.suite()) + indent + '}\n'
+        self.setJS(ctx, content)
+        self.procHead.pop()
 
     def exitParameters(self, ctx: Python3Parser.ParametersContext):
         content = '({})'.format(self.getJS(ctx.argslist()))
@@ -414,7 +418,7 @@ class JSEmitter(Python3Listener):
             param_num = 0
             if ctx.expr_param().arglist() is not None:
                 param_num = len(ctx.expr_param().arglist().argument())
-            func_info = Func.find(func_name)
+            func_info = Func.find(func_name, self.procHead)
             if func_info:
                 func_param = func_info["param"]
                 if param_num < func_param[0] or param_num > func_param[1]:
